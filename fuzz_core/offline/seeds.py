@@ -8,7 +8,7 @@ from ..config import ConfigStore
 from ..utils.fs import ensure_dir, latest_file, mark_generated_dir, read_json, sanitize_filename, utc_now_iso
 
 
-class SeedGenerationService:
+class SeedService:
     def __init__(self, config_store: ConfigStore) -> None:
         self.config_store = config_store
 
