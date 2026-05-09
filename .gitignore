@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+workspace/
+workspace_test/
+workspace_test_http/
+workspace_test_smoke/

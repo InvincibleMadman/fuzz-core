@@ -1,0 +1,62 @@
+server:
+  http:
+    host: 127.0.0.1
+    port: 18000
+  uds:
+    enabled: true
+    path: /tmp/fuzz-core.sock
+llm:
+  provider: openai-compatible
+  base_url: https://api.vectorengine.ai/v1
+  api_key: ""
+  models:
+    protocol_extract: gpt-5.4
+    risk_analysis: gpt-5.4
+    seed_generation: gpt-5.4
+  timeout_sec: 120
+paths:
+  workspace: ./workspace
+  uploads_dir: ./workspace/uploads
+  protocol_dir: ./workspace/protocol_specs
+  seed_dir: ./workspace/seeds
+  risk_dir: ./workspace/risk_results
+  jobs_dir: ./workspace/jobs
+  logs_dir: ./workspace/logs
+  temp_dir: ./workspace/tmp
+  protocol_scan_dir: ./workspace/protocol_specs
+  risk_scan_dir: ./workspace/risk_results
+legacy_paths:
+  vuldoc_upload_dir: ./workspace/uploads/Vuldoc
+  risk_upload_dir: ./workspace/uploads/Riskresult
+  distill_dir: ./workspace/corpus/distill
+  init_seed_txt_dir: ./workspace/corpus/queue
+  bin_seed_dir: ./workspace/corpus/bin_seed
+  risk_output_dir: ./workspace/corpus/risk_analy_result
+  protocol_output_dir: ./workspace/extract/output/best
+runtime:
+  preeny_desock_path: /home/zyl/preeny/src/desock.so
+  use_preeny_desock: false
+  afl_default_memory: none
+afl:
+  afl_binary: afl-fuzz
+  binary_search_paths:
+  - afl-fuzz
+  - /usr/local/bin/afl-fuzz
+  - /usr/bin/afl-fuzz
+  compiler_binaries:
+  - afl-clang-fast
+  - afl-clang-lto
+  - afl-cc
+  - afl-showmap
+  default_workers: 1
+  default_fuzzer_args: []
+  default_env: {}
+  poll_interval_sec: 2.0
+  artifact_scan_interval_sec: 5.0
+  stats_history_interval_sec: 5.0
+  replay_timeout_sec: 30
+offline:
+  default_protocol_filename: protocol_spec.json
+  default_risk_filename: final_analysis.json
+  default_seed_count: 8
+  risk_preview_chars: 12000
