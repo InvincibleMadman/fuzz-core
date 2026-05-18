@@ -4,7 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-
+from fastapi.middleware.cors import CORSMiddleware
 from ..config import ConfigStore
 from ..ipc.uds import UdsRpcServer
 from ..offline.instrument import InstrumentationService
@@ -89,6 +89,20 @@ def create_app(config_path: str | None = None) -> FastAPI:
             await uds_server.close()
 
     app = FastAPI(title='Fuzz Core', version='0.2.0', lifespan=lifespan)
+    
+    cors = state.config_store.get().server.cors
+    if cors.enabled:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors.allow_origins,
+            allow_origin_regex=cors.allow_origin_regex,
+            allow_credentials=cors.allow_credentials,
+            allow_methods=cors.allow_methods,
+            allow_headers=cors.allow_headers,
+            expose_headers=cors.expose_headers,
+            max_age=cors.max_age,
+        )
+    
     app.state.core = state
     app.include_router(health.router)
     app.include_router(config_router.router)

@@ -20,9 +20,21 @@ class UdsConfig(BaseModel):
     path: str = "/tmp/fuzz-core.sock"
 
 
+class CorsConfig(BaseModel):
+    enabled: bool = False
+    allow_origins: list[str] = Field(default_factory=list)
+    allow_origin_regex: str | None = None
+    allow_credentials: bool = True
+    allow_methods: list[str] = Field(default_factory=lambda: ["GET", "POST", "PATCH", "OPTIONS"])
+    allow_headers: list[str] = Field(default_factory=lambda: ["Authorization", "Content-Type"])
+    expose_headers: list[str] = Field(default_factory=list)
+    max_age: int = 3600
+
+
 class ServerConfig(BaseModel):
     http: HttpConfig = Field(default_factory=HttpConfig)
     uds: UdsConfig = Field(default_factory=UdsConfig)
+    cors: CorsConfig = Field(default_factory=CorsConfig)
 
 
 class ModelConfig(BaseModel):
