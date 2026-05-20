@@ -20,6 +20,7 @@ class DebugRequest(BaseModel):
     artifact_path: str | None = None
     artifact_id: str | None = None
     job_id: str | None = None
+    operation_id: str | None = None
     kb_entry_ids: list[str] = Field(default_factory=list)
     source_doc_ids: list[str] = Field(default_factory=list)
 

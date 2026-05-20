@@ -18,8 +18,8 @@ from ..debugger.session_manager import DebugSessionManager
 from ..runner.manager import RunnerManager
 from ..services.operation_log_service import OperationLogService
 
-def create_app() -> FastAPI:
-    cfg=load_config()
+def create_app(config_path: str | None = None) -> FastAPI:
+    cfg = load_config(config_path)
     paths=PathResolver(cfg.workspace.root, cfg.workspace.default_protocol)
     repo=Repository(paths.root/"fuzz_core.sqlite3")
     kb=KBService(paths, repo)

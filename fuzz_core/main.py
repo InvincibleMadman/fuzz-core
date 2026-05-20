@@ -1,21 +1,19 @@
-
 from __future__ import annotations
-
-import os
 
 import uvicorn
 
 from .api.app import create_app
-from .config import ConfigStore
+from .config import load_config
+
+app = create_app()
 
 
 def main() -> None:
-    config_path = os.environ.get("FUZZ_CORE_CONFIG", "./config.yaml")
-    config = ConfigStore(config_path).get()
+    cfg = load_config()
     uvicorn.run(
-        create_app(config_path),
-        host=config.server.http.host,
-        port=config.server.http.port,
+        app,
+        host=cfg.server.host,
+        port=cfg.server.port,
         reload=False,
     )
 

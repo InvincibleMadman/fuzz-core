@@ -1,23 +1,19 @@
-
-from __future__ import annotations
-
 from dataclasses import dataclass
-
-from .config import ConfigStore
-from .offline.instrument import InstrumentationService
-from .offline.protocol import ProtocolSpecService
-from .offline.risk import RiskAnalysisService
-from .offline.seeds import SeedService
-from .runner.manager import JobManager
-from .sdk import LocalCoreClient
-
+from .config import AppConfig
+from .storage.path_resolver import PathResolver
+from .storage.repository import Repository
 
 @dataclass
-class AppState:
-    config_store: ConfigStore
-    manager: JobManager
-    protocol_service: ProtocolSpecService
-    seed_service: SeedService
-    risk_service: RiskAnalysisService
-    instrument_service: InstrumentationService
-    local_client: LocalCoreClient
+class CoreState:
+    config: AppConfig
+    paths: PathResolver
+    repo: Repository
+    vuldocs: object
+    distill: object
+    kb: object
+    seeds: object
+    risk: object
+    history: object
+    debugger: object
+    runner: object
+    operations: object

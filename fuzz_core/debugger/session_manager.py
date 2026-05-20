@@ -28,8 +28,21 @@ class DebugSessionManager:
         "archived",
     ]
 
-    def __init__(self, gdb: GDBDriver, replayer: Replayer, classifier: VulnerabilityClassifier, persistence: DebugPersistence, history: HistoryService):
-        self.gdb, self.replayer, self.classifier, self.persistence, self.history = gdb, replayer, classifier, persistence, history
+    def __init__(
+        self,
+        gdb: GDBDriver,
+        replayer: Replayer,
+        classifier: VulnerabilityClassifier,
+        persistence: DebugPersistence,
+        history: HistoryService,
+        operations=None,
+    ):
+        self.gdb = gdb
+        self.replayer = replayer
+        self.classifier = classifier
+        self.persistence = persistence
+        self.history = history
+        self.operations = operations
 
     def run(self, req: DebugRequest | dict):
         if isinstance(req, dict):
