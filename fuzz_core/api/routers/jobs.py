@@ -1,117 +1,87 @@
-
 from __future__ import annotations
+from fastapi import APIRouter, Request, HTTPException, WebSocket
+from ...models import ApiResponse
+router=APIRouter()
 
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+@router.post("/api/v1/jobs")
+def create_job(request: Request, body: dict):
+    return ApiResponse(data=request.app.state.core.runner.create_job(body)).model_dump()
 
-from ..deps import get_state
-from ...models import ApiEnvelope
-from ...runner.models import JobCreateRequest
-from ...utils.afl import resolve_afl_binary
-from ...state import AppState
+@router.get("/api/v1/jobs")
+def list_jobs(request: Request):
+    return ApiResponse(data={"items":request.app.state.core.runner.list_jobs()}).model_dump()
 
-router = APIRouter(tags=["jobs"])
+@router.get("/api/v1/jobs/{job_id}")
+def get_job(job_id: str, request: Request):
+    job=request.app.state.core.runner.get_job(job_id)
+    if not job: raise HTTPException(404, "job not found")
+    return ApiResponse(data=job).model_dump()
 
+@router.post("/api/v1/jobs/{job_id}/stop")
+def stop_job(job_id: str, request: Request):
+    job=request.app.state.core.runner.stop_job(job_id)
+    if not job: raise HTTPException(404, "job not found")
+    return ApiResponse(data=job).model_dump()
 
-@router.post("/api/v1/jobs", response_model=ApiEnvelope)
-def create_job(req: JobCreateRequest, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    cfg = state.config_store.get()
-    req.afl.afl_binary = resolve_afl_binary(cfg, req.afl.afl_binary)
-    job = state.manager.create_job(req)
-    return ApiEnvelope(data=job.model_dump(mode="json"), msg="job created")
+@router.get("/api/v1/jobs/{job_id}/metrics")
+def metrics(job_id: str, request: Request):
+    return ApiResponse(data=request.app.state.core.runner.metrics(job_id)).model_dump()
 
-
-@router.get("/api/v1/jobs", response_model=ApiEnvelope)
-def list_jobs(state: AppState = Depends(get_state)) -> ApiEnvelope:
-    jobs = [job.model_dump(mode="json") for job in state.manager.list_jobs()]
-    return ApiEnvelope(data=jobs)
-
-
-@router.get("/api/v1/jobs/{job_id}", response_model=ApiEnvelope)
-def get_job(job_id: str, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    try:
-        job = state.manager.get_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(404, str(exc)) from exc
-    return ApiEnvelope(data=job.model_dump(mode="json"))
+@router.get("/api/v1/jobs/{job_id}/metrics/history")
+def metrics_history(job_id: str, request: Request):
+    return ApiResponse(data=request.app.state.core.runner.metrics_history(job_id)).model_dump()
 
 
-@router.post("/api/v1/jobs/{job_id}/stop", response_model=ApiEnvelope)
-def stop_job(job_id: str, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    try:
-        job = state.manager.stop_job(job_id)
-    except KeyError as exc:
-        raise HTTPException(404, str(exc)) from exc
-    return ApiEnvelope(data=job.model_dump(mode="json"), msg="job stopped")
+@router.get("/api/v1/jobs/{job_id}/debug/candidates")
+def job_debug_candidates(job_id: str, request: Request):
+    job=request.app.state.core.runner.get_job(job_id)
+    if not job: raise HTTPException(404, "job not found")
+    return ApiResponse(data={"job_id":job_id,"items":request.app.state.core.runner.debug_candidates(job_id)}).model_dump()
 
+@router.get("/api/v1/jobs/{job_id}/artifacts")
+def artifacts(job_id: str, request: Request):
+    return ApiResponse(data={"items":request.app.state.core.runner.artifacts(job_id)}).model_dump()
 
-@router.get("/api/v1/jobs/{job_id}/metrics", response_model=ApiEnvelope)
-def get_metrics(job_id: str, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    metrics = state.manager.get_metrics(job_id)
-    return ApiEnvelope(data=metrics.model_dump(mode="json") if metrics else None)
+@router.get("/api/v1/jobs/{job_id}/artifacts/{artifact_id}")
+def artifact(job_id: str, artifact_id: str, request: Request):
+    art=request.app.state.core.runner.get_artifact(job_id, artifact_id)
+    if not art: raise HTTPException(404, "artifact not found")
+    return ApiResponse(data=art).model_dump()
 
+@router.post("/api/v1/jobs/{job_id}/artifacts/{artifact_id}/replay")
+def replay(job_id: str, artifact_id: str, request: Request):
+    res=request.app.state.core.runner.replay_artifact(job_id, artifact_id)
+    if not res: raise HTTPException(404, "artifact not found")
+    return ApiResponse(data=res).model_dump()
 
-@router.get("/api/v1/jobs/{job_id}/metrics/history", response_model=ApiEnvelope)
-def get_metrics_history(job_id: str, limit: int = 200, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    return ApiEnvelope(data=state.manager.get_metrics_history(job_id, limit=limit))
+@router.post("/api/v1/jobs/{job_id}/artifacts/{artifact_id}/analyze")
+def analyze(job_id: str, artifact_id: str, request: Request):
+    res=request.app.state.core.runner.analyze_artifact(job_id, artifact_id)
+    if not res: raise HTTPException(404, "artifact not found")
+    return ApiResponse(data=res).model_dump()
 
-
-@router.get("/api/v1/jobs/{job_id}/artifacts", response_model=ApiEnvelope)
-def list_artifacts(job_id: str, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    return ApiEnvelope(data=[item.model_dump(mode="json") for item in state.manager.list_artifacts(job_id)])
-
-
-@router.get("/api/v1/jobs/{job_id}/artifacts/{artifact_id}", response_model=ApiEnvelope)
-def get_artifact(job_id: str, artifact_id: str, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    return ApiEnvelope(data=state.manager.get_artifact(job_id, artifact_id).model_dump(mode="json"))
-
-
-@router.post("/api/v1/jobs/{job_id}/artifacts/{artifact_id}/replay", response_model=ApiEnvelope)
-def replay_artifact(job_id: str, artifact_id: str, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    return ApiEnvelope(data=state.manager.replay_artifact(job_id, artifact_id).model_dump(mode="json"))
-
-
-@router.post("/api/v1/jobs/{job_id}/artifacts/{artifact_id}/analyze", response_model=ApiEnvelope)
-def analyze_artifact(job_id: str, artifact_id: str, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    return ApiEnvelope(data=state.manager.analyze_artifact(job_id, artifact_id).model_dump(mode="json"))
-
-
-@router.get("/api/v1/jobs/{job_id}/logs/tail", response_model=ApiEnvelope)
-def tail_logs(job_id: str, limit: int = 100, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    return ApiEnvelope(data=state.manager.get_logs_tail(job_id, limit=limit))
-
+@router.get("/api/v1/jobs/{job_id}/logs/tail")
+def logs_tail(job_id: str):
+    return ApiResponse(data={"job_id":job_id,"lines":[]}).model_dump()
 
 @router.get("/api/v1/jobs/{job_id}/logs/download")
-def download_logs(job_id: str, state: AppState = Depends(get_state)) -> FileResponse:
-    return FileResponse(path=state.manager.get_log_file(job_id), filename=f"{job_id}.log")
-
-
-async def _stream_channel(websocket: WebSocket, channel: str, state: AppState) -> None:
-    await websocket.accept()
-    queue = await state.manager.subscribe(channel)
-    try:
-        while True:
-            message = await queue.get()
-            if message is None:
-                return
-            await websocket.send_text(message)
-    except WebSocketDisconnect:
-        state.manager.unsubscribe(channel, queue)
-
+def logs_download(job_id: str):
+    return ApiResponse(data={"job_id":job_id,"download_url":None,"message":"No log bundle available in dry-run manager."}).model_dump()
 
 @router.websocket("/api/v1/jobs/{job_id}/events/ws")
-async def events_ws(websocket: WebSocket, job_id: str) -> None:
-    state: AppState = websocket.app.state.core
-    await _stream_channel(websocket, f"events:{job_id}", state)
-
+async def events_ws(websocket: WebSocket, job_id: str):
+    await websocket.accept()
+    await websocket.send_json({"type":"hello","job_id":job_id})
+    await websocket.close()
 
 @router.websocket("/api/v1/jobs/{job_id}/metrics/ws")
-async def metrics_ws(websocket: WebSocket, job_id: str) -> None:
-    state: AppState = websocket.app.state.core
-    await _stream_channel(websocket, f"metrics:{job_id}", state)
-
+async def metrics_ws(websocket: WebSocket, job_id: str):
+    await websocket.accept()
+    await websocket.send_json({"type":"metrics","job_id":job_id})
+    await websocket.close()
 
 @router.websocket("/api/v1/jobs/{job_id}/artifacts/ws")
-async def artifacts_ws(websocket: WebSocket, job_id: str) -> None:
-    state: AppState = websocket.app.state.core
-    await _stream_channel(websocket, f"artifacts:{job_id}", state)
+async def artifacts_ws(websocket: WebSocket, job_id: str):
+    await websocket.accept()
+    await websocket.send_json({"type":"artifacts","job_id":job_id})
+    await websocket.close()

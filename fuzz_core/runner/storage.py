@@ -1,38 +1,18 @@
-
 from __future__ import annotations
-
+import json
 from pathlib import Path
 
-from .models import ArtifactRecord, Job, Metrics
-from ..utils.fs import append_jsonl, ensure_dir, read_json, tail_lines, write_json
-
-
 class JobStorage:
-    def __init__(self, root: Path) -> None:
-        self.root = ensure_dir(root)
-        self.logs_dir = ensure_dir(self.root / "logs")
-        self.analysis_dir = ensure_dir(self.root / "analysis")
-        self.job_file = self.root / "job.json"
-        self.artifacts_file = self.root / "artifacts.json"
-        self.events_file = self.root / "events.ndjson"
-        self.metrics_history_file = self.root / "metrics-history.ndjson"
-        self.log_file = self.logs_dir / "runner.log"
-        self.db_file = self.root / "fuzzing_result.db"
+    def __init__(self, root: Path):
+        self.root=root; self.root.mkdir(parents=True, exist_ok=True)
 
-    def save_job(self, job: Job) -> None:
-        write_json(self.job_file, job.model_dump(mode="json"))
+    def save(self, job: dict):
+        path=self.root/(job["job_id"]+".json")
+        path.write_text(json.dumps(job, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    def load_job(self) -> dict:
-        return read_json(self.job_file)
+    def get(self, job_id: str):
+        path=self.root/(job_id+".json")
+        return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
-    def save_artifacts(self, items: list[ArtifactRecord]) -> None:
-        write_json(self.artifacts_file, {"artifacts": [item.model_dump(mode="json") for item in items]})
-
-    def append_event(self, payload: dict) -> None:
-        append_jsonl(self.events_file, payload)
-
-    def append_metrics(self, metrics: Metrics) -> None:
-        append_jsonl(self.metrics_history_file, metrics.model_dump(mode="json"))
-
-    def tail_log(self, limit: int = 100) -> list[str]:
-        return tail_lines(self.log_file, limit=limit)
+    def list(self):
+        return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(self.root.glob("*.json"))]

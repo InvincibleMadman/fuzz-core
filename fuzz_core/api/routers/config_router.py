@@ -1,25 +1,19 @@
+from fastapi import APIRouter, Request
+from ...models import ApiResponse
+from ...config import AppConfig
+router=APIRouter()
 
-from __future__ import annotations
+@router.get("/api/v1/config")
+def get_config(request: Request):
+    return ApiResponse(data=request.app.state.core.config.model_dump()).model_dump()
 
-from fastapi import APIRouter, Depends
-
-from ..deps import get_state
-from ...models import ApiEnvelope, ConfigPatchRequest
-from ...state import AppState
-from ...utils.afl import resolve_afl_tools
-
-router = APIRouter(tags=["config"])
-
-
-@router.get("/api/v1/config", response_model=ApiEnvelope)
-def get_config(state: AppState = Depends(get_state)) -> ApiEnvelope:
-    cfg = state.config_store.get()
-    payload = state.config_store.as_dict()
-    payload.setdefault('runtime_info', {})['resolved_afl_tools'] = resolve_afl_tools(cfg)
-    return ApiEnvelope(data=payload)
-
-
-@router.patch("/api/v1/config", response_model=ApiEnvelope)
-def patch_config(req: ConfigPatchRequest, state: AppState = Depends(get_state)) -> ApiEnvelope:
-    cfg = state.config_store.update(req.patch)
-    return ApiEnvelope(data=cfg.model_dump(mode="python"), msg="config updated")
+@router.patch("/api/v1/config")
+def patch_config(request: Request, patch: dict):
+    cfg=request.app.state.core.config.model_dump()
+    def merge(a,b):
+        for k,v in b.items():
+            if isinstance(v,dict) and isinstance(a.get(k),dict): merge(a[k],v)
+            else: a[k]=v
+    merge(cfg, patch)
+    request.app.state.core.config=AppConfig.model_validate(cfg)
+    return ApiResponse(data=request.app.state.core.config.model_dump()).model_dump()
